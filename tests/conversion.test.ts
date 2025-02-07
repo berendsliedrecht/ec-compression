@@ -1,6 +1,6 @@
 import { deepStrictEqual } from 'node:assert'
 import { describe, test } from 'node:test'
-import { bigintToBytes, bytesToBigint } from '../src/conversion'
+import { bigintToBytes, bytesToBigint } from '../src'
 
 describe('conversion', () => {
   test('round trip bigint to bytes to bigint', () => {

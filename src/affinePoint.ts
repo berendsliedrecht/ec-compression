@@ -25,6 +25,52 @@ export class AffinePoint {
     return new AffinePoint(x, y)
   }
 
+  public static fromDecompressedPoint(decompressedForm: bigint, curveParams: CurveParams): AffinePoint {
+    const decompressedAsBytes = bigintToBytes(decompressedForm)
+    const initialByte = decompressedAsBytes[0]
+
+    if (initialByte !== 0x04) {
+      throw new Error('Invalid initial byte for decompressed form')
+    }
+
+    const { pointBitLength } = curveParams
+
+    let x: Uint8Array | undefined = undefined
+    let y: Uint8Array | undefined = undefined
+
+    const r = pointBitLength % 8
+
+    // Key length is always the same
+    if (r === 0) {
+      x = decompressedAsBytes.slice(1, pointBitLength / 8 + 1)
+      y = decompressedAsBytes.slice(pointBitLength / 8 + 1)
+
+      // Key length may be different
+      // This happens when the x or y coordinate starts with a 0 bit
+    } else if (r === 1) {
+      // One coordinate, X, is shorter
+      // TODO: we assume the X no 0 prefix and not Y
+      //       assumption is made because when the uncompressed form
+      //       is made it should account for the Y value needing a 0
+      if (decompressedAsBytes.length === 1 + Math.floor(pointBitLength / 8) * 2 + 1) {
+        const xWithoutZero = decompressedAsBytes.slice(1, Math.ceil(pointBitLength / 8))
+        x = new Uint8Array(Math.ceil(pointBitLength / 8))
+        x[0] = 0
+        x.set(xWithoutZero, 1)
+
+        y = decompressedAsBytes.slice(Math.ceil(pointBitLength / 8))
+
+        // two coordinates are shorter
+      }
+    }
+
+    if (!x || !y) {
+      throw new Error('Could not deconstruct decompressed form into affine points')
+    }
+
+    return new AffinePoint(bytesToBigint(x), bytesToBigint(y))
+  }
+
   private static findAssociatedY(isYEven: boolean, x: bigint, curveParams: CurveParams): bigint {
     const { p, a, b } = curveParams
     if (x < 0n || x > p - 1n) {
