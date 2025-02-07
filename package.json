@@ -1,9 +1,12 @@
 {
 	"name": "ec-compression",
-	"module": "src/index.ts",
+	"version": "0.0.1",
+	"module": "bundle.js",
 	"type": "module",
+	"files": ["bundle.js"],
 	"scripts": {
-		"lint": "bunx biome check --write --unsafe ."
+		"lint": "bunx biome check --write --unsafe .",
+		"compile": "bun build src --outfile=bundle.js"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
