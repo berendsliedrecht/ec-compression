@@ -1,20 +1,18 @@
 {
 	"name": "ec-compression",
-	"version": "0.0.1",
-	"module": "bundle.js",
+	"version": "0.0.1-alpha.2",
+	"main": "build/index.js",
 	"type": "module",
-	"files": ["bundle.js"],
+	"files": ["build"],
 	"scripts": {
-		"lint": "bunx biome check --write --unsafe .",
-		"compile": "bun build src --outfile=bundle.js"
+		"lint": "biome check --write --unsafe .",
+		"build": "tsc",
+		"distribute": "pnpm build"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
 		"@noble/curves": "^1.8.1",
-		"@types/bun": "latest"
+		"typescript": "~5.7.3"
 	},
-	"peerDependencies": {
-		"typescript": "^5.0.0"
-	},
-	"trustedDependencies": ["@biomejs/biome"]
+	"peerDependencies": {}
 }
