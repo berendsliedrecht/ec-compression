@@ -1,2 +1,2 @@
-export * from "./curveParams"
-export * from "./affinePoint"
+export * from './curveParams'
+export * from './affinePoint'

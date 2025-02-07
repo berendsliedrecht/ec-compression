@@ -1,18 +1,21 @@
 {
-	"name": "ec-compression",
-	"version": "0.0.1-alpha.2",
-	"main": "build/index.js",
-	"type": "module",
-	"files": ["build"],
-	"scripts": {
-		"lint": "biome check --write --unsafe .",
-		"build": "tsc",
-		"distribute": "pnpm build"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
-		"@noble/curves": "^1.8.1",
-		"typescript": "~5.7.3"
-	},
-	"peerDependencies": {}
+  "name": "ec-compression",
+  "version": "0.0.1-alpha.3",
+  "main": "build/index.js",
+  "type": "module",
+  "files": ["build"],
+  "scripts": {
+    "lint": "biome check --write --unsafe .",
+    "test": "node --require tsx --test tests/*.test.ts",
+    "build": "tsc",
+    "distribute": "pnpm build && pnpm publish",
+    "distribute:alpha": "pnpm distribute --tag alpha"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@noble/curves": "^1.8.1",
+    "@types/node": "^22.13.1",
+    "tsx": "^4.19.2",
+    "typescript": "~5.7.3"
+  }
 }
