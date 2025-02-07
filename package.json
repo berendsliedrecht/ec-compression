@@ -1,0 +1,17 @@
+{
+	"name": "ec-compression",
+	"module": "src/index.ts",
+	"type": "module",
+	"scripts": {
+		"lint": "bunx biome check --write --unsafe ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"@noble/curves": "^1.8.1",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"trustedDependencies": ["@biomejs/biome"]
+}
