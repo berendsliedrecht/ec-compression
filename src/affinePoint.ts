@@ -8,13 +8,20 @@ export const PREFIX_COMPRESSED_Y_IS_ODD = 0x03
 export const PREFIX_UNCOMPRESSED = 0x04
 
 export class AffinePoint {
-  public x: bigint
-  public y: bigint
+  public xBytes: Uint8Array
+  public yBytes: Uint8Array
 
-  public constructor(x: Uint8Array | bigint, y: Uint8Array | bigint
-  ) {
-    this.x = typeof x === 'bigint' ? x : bytesToBigint(x)
-    this.y = typeof y === 'bigint' ? y : bytesToBigint(y)
+  public constructor(x: Uint8Array | bigint, y: Uint8Array | bigint) {
+    this.xBytes = typeof x === 'bigint' ? bigintToBytes(x) : x
+    this.yBytes = typeof y === 'bigint' ? bigintToBytes(y) : y
+  }
+
+  public get x() {
+    return bytesToBigint(this.xBytes)
+  }
+
+  public get y() {
+    return bytesToBigint(this.yBytes)
   }
 
   public static fromCompressedPoint(
@@ -28,10 +35,9 @@ export class AffinePoint {
     }
 
     const isYEven = compressedAsBytes[0] % 2 === 0
-    const xAsBytes = compressedAsBytes.slice(1)
+    const x = compressedAsBytes.slice(1)
 
-    const x = bytesToBigint(xAsBytes)
-    const y = AffinePoint.findAssociatedY(isYEven, bytesToBigint(xAsBytes), curveParams)
+    const y = AffinePoint.findAssociatedY(isYEven, bytesToBigint(x), curveParams)
 
     return new AffinePoint(x, y)
   }
@@ -69,10 +75,6 @@ export class AffinePoint {
       const xAndYBothLong = decompressedAsBytes.length === Math.ceil(pointBitLength / 8) * 2 + 1
       const xOrYLong = !xAndYBothShort && !xAndYBothLong
 
-      // One coordinate, X, is shorter
-      // TODO: we assume the X no 0 prefix and not Y
-      //       assumption is made because when the uncompressed form
-      //       is made it should account for the Y value needing a 0
       if (xAndYBothShort) {
         x = decompressedAsBytes.slice(1, Math.floor(pointBitLength / 8) + 1)
         y = decompressedAsBytes.slice(Math.floor(pointBitLength / 8) + 1)
@@ -83,7 +85,11 @@ export class AffinePoint {
         y = decompressedAsBytes.slice(Math.ceil(pointBitLength / 8) + 1)
       }
 
+      // Algorithm to figure out whether x or y is long
       if (xOrYLong) {
+        const initialY = decompressedAsBytes[Math.ceil(pointBitLength / 8 + 1)]
+        console.log('initial y: from func', initialY)
+
         const xWithoutZero = decompressedAsBytes.slice(1, Math.ceil(pointBitLength / 8))
         x = new Uint8Array(Math.ceil(pointBitLength / 8))
         x[0] = 0
@@ -99,14 +105,14 @@ export class AffinePoint {
       throw new Error('Could not deconstruct decompressed form into affine points')
     }
 
-    return new AffinePoint(bytesToBigint(x), bytesToBigint(y))
+    return new AffinePoint(x, y)
   }
 
-  private static findAssociatedY(isYEven: boolean, x: bigint, curveParams: CurveParams | string): bigint {
+  private static findAssociatedY(isYEven: boolean, x: bigint, curveParams: CurveParams | string): Uint8Array {
     const foundCurve = typeof curveParams === 'string' ? getCurveParamsByName(curveParams) : curveParams
     if (!foundCurve) throw new Error('Curve not found')
 
-    const { p, a, b } = foundCurve
+    const { p, a, b, pointBitLength } = foundCurve
     if (x < 0n || x > p - 1n) {
       throw Error('X coordinate is outside of the plane')
     }
@@ -115,30 +121,29 @@ export class AffinePoint {
     const isYPrimeEven = yPrime % 2n === 0n
     const y = isYPrimeEven === isYEven ? yPrime : p - yPrime
 
-    return y
-  }
+    if (pointBitLength % 8 !== 0) {
+      const expectedKeyLength = Math.ceil(pointBitLength / 8)
+      const _y = new Uint8Array(expectedKeyLength).fill(0)
+      const yAsBytes = bigintToBytes(y)
+      _y.set(yAsBytes, expectedKeyLength - yAsBytes.length)
+      return _y
+    }
 
-  public get xAsBytes(): Uint8Array {
-    return bigintToBytes(this.x)
-  }
-
-  public get yAsBytes(): Uint8Array {
-    return bigintToBytes(this.y)
+    return bigintToBytes(y)
   }
 
   private get isYEven(): boolean {
-    return Number(this.y % 2n) === 0
+    return Number(bytesToBigint(this.yBytes) % 2n) === 0
   }
 
   public get compressedForm(): Uint8Array {
-    const xAsBytes = this.xAsBytes
-    const out = new Uint8Array(xAsBytes.length + 1)
+    const out = new Uint8Array(this.xBytes.length + 1)
     out[0] = Number(this.isYEven ? PREFIX_COMPRESSED_Y_IS_EVEN : PREFIX_COMPRESSED_Y_IS_ODD)
-    out.set(xAsBytes, 1)
+    out.set(this.xBytes, 1)
     return out
   }
 
   public get decompressedForm(): Uint8Array {
-    return Uint8Array.from([PREFIX_UNCOMPRESSED, ...this.xAsBytes, ...this.yAsBytes])
+    return Uint8Array.from([PREFIX_UNCOMPRESSED, ...this.xBytes, ...this.yBytes])
   }
 }
