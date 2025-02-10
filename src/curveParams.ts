@@ -42,5 +42,5 @@ export const Secp256k1 = new CurveParams(
   0x0n,
   0x7n,
   256,
-  ['secp256k1', 'p256', 'p-256']
+  ['secp256k1', 'k256', 'k-256']
 )
