@@ -1,6 +1,11 @@
 import { bigintToBytes, bytesToBigint } from './conversion'
-import type { CurveParams } from './curveParams'
+import { isValidCompressedPublicKeyFormat, isValidDecompressedPublicKeyFormat } from './crypto'
+import { type CurveParams, getCurveParamsByName } from './curveParams'
 import { modSqrt } from './math'
+
+export const PREFIX_COMPRESSED_Y_IS_EVEN = 0x02
+export const PREFIX_COMPRESSED_Y_IS_ODD = 0x03
+export const PREFIX_UNCOMPRESSED = 0x04
 
 export class AffinePoint {
   public constructor(
@@ -8,12 +13,11 @@ export class AffinePoint {
     public y: bigint
   ) {}
 
-  public static fromCompressedPoint(compressedForm: bigint, curveParams: CurveParams): AffinePoint {
+  public static fromCompressedPoint(compressedForm: bigint, curveParams: CurveParams | string): AffinePoint {
     const compressedAsBytes = bigintToBytes(compressedForm)
-    const initialByte = compressedAsBytes[0]
 
-    if (initialByte !== 0x02 && initialByte !== 0x03) {
-      throw new Error('Invalid initial byte for compressed form')
+    if (!isValidCompressedPublicKeyFormat(compressedAsBytes, curveParams)) {
+      throw new Error('Invalid format for compressed form')
     }
 
     const isYEven = compressedAsBytes[0] % 2 === 0
@@ -25,20 +29,26 @@ export class AffinePoint {
     return new AffinePoint(x, y)
   }
 
-  public static fromDecompressedPoint(decompressedForm: bigint, curveParams: CurveParams): AffinePoint {
+  public static fromDecompressedPoint(decompressedForm: bigint, curveParams: CurveParams | string): AffinePoint {
     const decompressedAsBytes = bigintToBytes(decompressedForm)
-    const initialByte = decompressedAsBytes[0]
 
-    if (initialByte !== 0x04) {
-      throw new Error('Invalid initial byte for decompressed form')
+    if (!isValidDecompressedPublicKeyFormat(decompressedAsBytes, curveParams)) {
+      throw new Error('Invalid format for decompressed form')
     }
 
-    const { pointBitLength } = curveParams
+    const foundCurve = typeof curveParams === 'string' ? getCurveParamsByName(curveParams) : curveParams
+    if (!foundCurve) throw new Error('Curve not found')
+
+    const { pointBitLength } = foundCurve
 
     let x: Uint8Array | undefined = undefined
     let y: Uint8Array | undefined = undefined
 
     const r = pointBitLength % 8
+
+    console.log('len: ', decompressedAsBytes.length)
+    console.log('flo: ', Math.floor(pointBitLength / 8) * 2 + 1)
+    console.log('cei: ', Math.ceil(pointBitLength / 8) * 2 + 1)
 
     // Key length is always the same
     if (r === 0) {
@@ -48,11 +58,25 @@ export class AffinePoint {
       // Key length may be different
       // This happens when the x or y coordinate starts with a 0 bit
     } else if (r === 1) {
+      const xAndYBothShort = decompressedAsBytes.length === Math.floor(pointBitLength / 8) * 2 + 1
+      const xAndYBothLong = decompressedAsBytes.length === Math.ceil(pointBitLength / 8) * 2 + 1
+      const xOrYLong = !xAndYBothShort && !xAndYBothLong
+
       // One coordinate, X, is shorter
       // TODO: we assume the X no 0 prefix and not Y
       //       assumption is made because when the uncompressed form
       //       is made it should account for the Y value needing a 0
-      if (decompressedAsBytes.length === 1 + Math.floor(pointBitLength / 8) * 2 + 1) {
+      if (xAndYBothShort) {
+        x = decompressedAsBytes.slice(1, Math.floor(pointBitLength / 8) + 1)
+        y = decompressedAsBytes.slice(Math.floor(pointBitLength / 8) + 1)
+      }
+
+      if (xAndYBothLong) {
+        x = decompressedAsBytes.slice(1, Math.ceil(pointBitLength / 8) + 1)
+        y = decompressedAsBytes.slice(Math.ceil(pointBitLength / 8) + 1)
+      }
+
+      if (xOrYLong) {
         const xWithoutZero = decompressedAsBytes.slice(1, Math.ceil(pointBitLength / 8))
         x = new Uint8Array(Math.ceil(pointBitLength / 8))
         x[0] = 0
@@ -71,8 +95,11 @@ export class AffinePoint {
     return new AffinePoint(bytesToBigint(x), bytesToBigint(y))
   }
 
-  private static findAssociatedY(isYEven: boolean, x: bigint, curveParams: CurveParams): bigint {
-    const { p, a, b } = curveParams
+  private static findAssociatedY(isYEven: boolean, x: bigint, curveParams: CurveParams | string): bigint {
+    const foundCurve = typeof curveParams === 'string' ? getCurveParamsByName(curveParams) : curveParams
+    if (!foundCurve) throw new Error('Curve not found')
+
+    const { p, a, b } = foundCurve
     if (x < 0n || x > p - 1n) {
       throw Error('X coordinate is outside of the plane')
     }
@@ -99,12 +126,12 @@ export class AffinePoint {
   public get compressedForm(): Uint8Array {
     const xAsBytes = this.xAsBytes
     const out = new Uint8Array(xAsBytes.length + 1)
-    out[0] = Number(this.isYEven ? 0x02 : 0x03)
+    out[0] = Number(this.isYEven ? PREFIX_COMPRESSED_Y_IS_EVEN : PREFIX_COMPRESSED_Y_IS_ODD)
     out.set(xAsBytes, 1)
     return out
   }
 
   public get decompressedForm(): Uint8Array {
-    return Uint8Array.from([0x04, ...this.xAsBytes, ...this.yAsBytes])
+    return Uint8Array.from([PREFIX_UNCOMPRESSED, ...this.xAsBytes, ...this.yAsBytes])
   }
 }
