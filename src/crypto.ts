@@ -1,4 +1,3 @@
-import exp from 'node:constants'
 import {
   AffinePoint,
   PREFIX_COMPRESSED_Y_IS_EVEN,

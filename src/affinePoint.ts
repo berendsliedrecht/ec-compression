@@ -8,13 +8,20 @@ export const PREFIX_COMPRESSED_Y_IS_ODD = 0x03
 export const PREFIX_UNCOMPRESSED = 0x04
 
 export class AffinePoint {
-  public constructor(
-    public x: bigint,
-    public y: bigint
-  ) {}
+  public x: bigint
+  public y: bigint
 
-  public static fromCompressedPoint(compressedForm: bigint, curveParams: CurveParams | string): AffinePoint {
-    const compressedAsBytes = bigintToBytes(compressedForm)
+  public constructor(x: Uint8Array | bigint, y: Uint8Array | bigint
+  ) {
+    this.x = typeof x === 'bigint' ? x : bytesToBigint(x)
+    this.y = typeof y === 'bigint' ? y : bytesToBigint(y)
+  }
+
+  public static fromCompressedPoint(
+    compressedForm: bigint | Uint8Array,
+    curveParams: CurveParams | string
+  ): AffinePoint {
+    const compressedAsBytes = typeof compressedForm === 'bigint' ? bigintToBytes(compressedForm) : compressedForm
 
     if (!isValidCompressedPublicKeyFormat(compressedAsBytes, curveParams)) {
       throw new Error('Invalid format for compressed form')
@@ -29,8 +36,12 @@ export class AffinePoint {
     return new AffinePoint(x, y)
   }
 
-  public static fromDecompressedPoint(decompressedForm: bigint, curveParams: CurveParams | string): AffinePoint {
-    const decompressedAsBytes = bigintToBytes(decompressedForm)
+  public static fromDecompressedPoint(
+    decompressedForm: bigint | Uint8Array,
+    curveParams: CurveParams | string
+  ): AffinePoint {
+    const decompressedAsBytes =
+      typeof decompressedForm === 'bigint' ? bigintToBytes(decompressedForm) : decompressedForm
 
     if (!isValidDecompressedPublicKeyFormat(decompressedAsBytes, curveParams)) {
       throw new Error('Invalid format for decompressed form')
@@ -45,10 +56,6 @@ export class AffinePoint {
     let y: Uint8Array | undefined = undefined
 
     const r = pointBitLength % 8
-
-    console.log('len: ', decompressedAsBytes.length)
-    console.log('flo: ', Math.floor(pointBitLength / 8) * 2 + 1)
-    console.log('cei: ', Math.ceil(pointBitLength / 8) * 2 + 1)
 
     // Key length is always the same
     if (r === 0) {
@@ -111,15 +118,15 @@ export class AffinePoint {
     return y
   }
 
-  public get xAsBytes() {
+  public get xAsBytes(): Uint8Array {
     return bigintToBytes(this.x)
   }
 
-  public get yAsBytes() {
+  public get yAsBytes(): Uint8Array {
     return bigintToBytes(this.y)
   }
 
-  private get isYEven() {
+  private get isYEven(): boolean {
     return Number(this.y % 2n) === 0
   }
 
