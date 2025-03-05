@@ -72,39 +72,15 @@ export const compressPublicKeyIfPossible = (
 export const isValidCompressedPublicKeyFormat = (publicKey: Uint8Array, curve: CurveParams | string) => {
   if (publicKey[0] !== PREFIX_COMPRESSED_Y_IS_EVEN && publicKey[0] !== PREFIX_COMPRESSED_Y_IS_ODD) return false
 
-  const foundCurve = typeof curve === 'string' ? getCurveParamsByName(curve) : curve
-  if (!foundCurve) throw new Error('Curve not found')
-
-  const expectedCompressedKeyLengthWithoutPrefix = foundCurve.pointBitLength / 8
-
-  if (foundCurve.pointBitLength % 8 === 0) {
-    return publicKey.length === expectedCompressedKeyLengthWithoutPrefix + 1
-  }
-
-  const isValidCompressedKeyLength =
-    publicKey.length >= Math.floor(expectedCompressedKeyLengthWithoutPrefix) + 1 &&
-    publicKey.length <= Math.ceil(expectedCompressedKeyLengthWithoutPrefix) + 1
-
-  return isValidCompressedKeyLength
+  const affinePoint = AffinePoint.fromCompressedPoint(publicKey, curve)
+  return affinePoint.isValidPoint(curve)
 }
 
 export const isValidDecompressedPublicKeyFormat = (publicKey: Uint8Array, curve: CurveParams | string) => {
   if (publicKey[0] !== PREFIX_UNCOMPRESSED) return false
 
-  const foundCurve = typeof curve === 'string' ? getCurveParamsByName(curve) : curve
-  if (!foundCurve) throw new Error('Curve not found')
-
-  const expectedCompressedKeyLengthWithoutPrefix = foundCurve.pointBitLength / 8
-
-  if (foundCurve.pointBitLength % 8 === 0) {
-    return publicKey.length === expectedCompressedKeyLengthWithoutPrefix * 2 + 1
-  }
-
-  const isValidDecompressedKeyLength =
-    publicKey.length >= Math.floor(expectedCompressedKeyLengthWithoutPrefix) * 2 + 1 &&
-    publicKey.length <= Math.ceil(expectedCompressedKeyLengthWithoutPrefix) * 2 + 1
-
-  return isValidDecompressedKeyLength
+  const affinePoint = AffinePoint.fromDecompressedPoint(publicKey, curve)
+  return affinePoint.isValidPoint(curve)
 }
 
 export const isValidPublicKeyFormat = (publicKey: Uint8Array, curve: CurveParams | string) => {

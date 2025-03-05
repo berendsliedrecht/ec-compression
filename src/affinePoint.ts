@@ -1,7 +1,7 @@
 import { bigintToBytes, bytesToBigint } from './conversion'
-import { isValidCompressedPublicKeyFormat, isValidDecompressedPublicKeyFormat } from './crypto'
+import { isValidDecompressedPublicKeyFormat } from './crypto'
 import { type CurveParams, getCurveParamsByName } from './curveParams'
-import { modSqrt } from './math'
+import { modPow, modSqrt } from './math'
 
 export const PREFIX_COMPRESSED_Y_IS_EVEN = 0x02
 export const PREFIX_COMPRESSED_Y_IS_ODD = 0x03
@@ -30,16 +30,15 @@ export class AffinePoint {
   ): AffinePoint {
     const compressedAsBytes = typeof compressedForm === 'bigint' ? bigintToBytes(compressedForm) : compressedForm
 
-    if (!isValidCompressedPublicKeyFormat(compressedAsBytes, curveParams)) {
-      throw new Error('Invalid format for compressed form')
-    }
-
     const isYEven = compressedAsBytes[0] % 2 === 0
     const x = compressedAsBytes.slice(1)
 
-    const y = AffinePoint.findAssociatedY(isYEven, bytesToBigint(x), curveParams)
-
-    return new AffinePoint(x, y)
+    try {
+      const y = AffinePoint.findAssociatedY(isYEven, bytesToBigint(x), curveParams)
+      return new AffinePoint(x, y)
+    } catch (e) {
+      throw new Error('Invalid compressed form provided')
+    }
   }
 
   public static fromDecompressedPoint(
@@ -48,10 +47,6 @@ export class AffinePoint {
   ): AffinePoint {
     const decompressedAsBytes =
       typeof decompressedForm === 'bigint' ? bigintToBytes(decompressedForm) : decompressedForm
-
-    if (!isValidDecompressedPublicKeyFormat(decompressedAsBytes, curveParams)) {
-      throw new Error('Invalid format for decompressed form')
-    }
 
     const foundCurve = typeof curveParams === 'string' ? getCurveParamsByName(curveParams) : curveParams
     if (!foundCurve) throw new Error('Curve not found')
@@ -96,8 +91,6 @@ export class AffinePoint {
         x.set(xWithoutZero, 1)
 
         y = decompressedAsBytes.slice(Math.ceil(pointBitLength / 8))
-
-        // two coordinates are shorter
       }
     }
 
@@ -105,7 +98,13 @@ export class AffinePoint {
       throw new Error('Could not deconstruct decompressed form into affine points')
     }
 
-    return new AffinePoint(x, y)
+    const affinePoint = new AffinePoint(x, y)
+
+    if (!affinePoint.isValidPoint(curveParams)) {
+      throw new Error('Invalid decompressed form provided')
+    }
+
+    return affinePoint
   }
 
   private static findAssociatedY(isYEven: boolean, x: bigint, curveParams: CurveParams | string): Uint8Array {
@@ -130,6 +129,18 @@ export class AffinePoint {
     }
 
     return bigintToBytes(y)
+  }
+
+  public isValidPoint(curveParams: CurveParams | string) {
+    const foundCurve = typeof curveParams === 'string' ? getCurveParamsByName(curveParams) : curveParams
+    if (!foundCurve) throw new Error('Curve not found')
+
+    const { p, a, b } = foundCurve
+
+    const lhs = modPow(this.y, 2n, p)
+    const rhs = (this.x ** 3n + a * this.x + b) % p
+
+    return lhs === rhs
   }
 
   private get isYEven(): boolean {
