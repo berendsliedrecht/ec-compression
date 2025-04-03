@@ -1,5 +1,4 @@
 import { bigintToBytes, bytesToBigint } from './conversion'
-import { isValidDecompressedPublicKeyFormat } from './crypto'
 import { type CurveParams, getCurveParamsByName } from './curveParams'
 import { modPow, modSqrt } from './math'
 
@@ -82,9 +81,6 @@ export class AffinePoint {
 
       // Algorithm to figure out whether x or y is long
       if (xOrYLong) {
-        const initialY = decompressedAsBytes[Math.ceil(pointBitLength / 8 + 1)]
-        console.log('initial y: from func', initialY)
-
         const xWithoutZero = decompressedAsBytes.slice(1, Math.ceil(pointBitLength / 8))
         x = new Uint8Array(Math.ceil(pointBitLength / 8))
         x[0] = 0
@@ -120,15 +116,11 @@ export class AffinePoint {
     const isYPrimeEven = yPrime % 2n === 0n
     const y = isYPrimeEven === isYEven ? yPrime : p - yPrime
 
-    if (pointBitLength % 8 !== 0) {
-      const expectedKeyLength = Math.ceil(pointBitLength / 8)
-      const _y = new Uint8Array(expectedKeyLength).fill(0)
-      const yAsBytes = bigintToBytes(y)
-      _y.set(yAsBytes, expectedKeyLength - yAsBytes.length)
-      return _y
-    }
-
-    return bigintToBytes(y)
+    const expectedKeyLength = Math.ceil(pointBitLength / 8)
+    const _y = new Uint8Array(expectedKeyLength).fill(0)
+    const yAsBytes = bigintToBytes(y)
+    _y.set(yAsBytes, expectedKeyLength - yAsBytes.length)
+    return _y
   }
 
   public isValidPoint(curveParams: CurveParams | string) {

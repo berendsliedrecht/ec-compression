@@ -1,15 +1,6 @@
-import { deepStrictEqual, ok } from 'node:assert'
+import { deepStrictEqual } from 'node:assert'
 import { describe, test } from 'node:test'
-import {
-  AffinePoint,
-  Secp256k1,
-  Secp256r1,
-  Secp384r1,
-  Secp521r1,
-  bigintToBytes,
-  decompressPublicKeySecp256k1,
-  isValidPublicKeyFormat,
-} from '../src'
+import { AffinePoint, Secp521r1, bigintToBytes, decompressPublicKeySecp256k1 } from '../src'
 
 describe('crypto', () => {
   describe('secp256k1', () => {

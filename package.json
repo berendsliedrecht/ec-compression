@@ -1,6 +1,6 @@
 {
   "name": "ec-compression",
-  "version": "0.0.1-alpha.11",
+  "version": "0.0.1-alpha.12",
   "exports": "./src/index.ts",
   "files": ["dist"],
   "publishConfig": {
@@ -18,13 +18,14 @@
   },
   "scripts": {
     "lint": "biome check --write --unsafe .",
-    "test": "node --require tsx --test tests/*.test.ts",
+    "test": "node --require tsx --test tests/keys.test.ts",
     "build": "tsup src/index.ts --format cjs,esm --dts --clean --sourcemap",
     "distribute": "pnpm build && pnpm publish",
     "distribute:alpha": "pnpm distribute --tag alpha"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@noble/curves": "^1.8.1",
     "@types/node": "^22.13.1",
     "tsup": "^8.3.6",
     "tsx": "^4.19.2",
